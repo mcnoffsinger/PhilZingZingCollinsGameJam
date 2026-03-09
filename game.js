@@ -29,7 +29,7 @@ let particles = [];
 
 // Load player image
 const philImage = new Image();
-philImage.src = 'Art/Phil.png';
+philImage.src = 'Art/PhilDrums.png';
 philImage.onload = () => {
     player.image = philImage;
 };
@@ -312,7 +312,7 @@ function updateUI() {
 }
 
 function gameOver() {
-    alert(`Game Over! Final Score: ${score}`);
+    alert(`I DON'T CARE ANYMORE: ${score}`);
     score = 0;
     health = 100;
     enemies = [];
@@ -369,7 +369,7 @@ function draw() {
     if (player.image) {
         ctx.save();
         ctx.translate(player.x, player.y);
-        ctx.rotate(player.angle);
+        ctx.rotate(player.angle + 3.141529);
         ctx.drawImage(player.image, -player.radius, -player.radius, player.radius * 2, player.radius * 2);
         ctx.restore();
     } else {
