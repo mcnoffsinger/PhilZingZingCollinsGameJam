@@ -16,7 +16,7 @@ let keys = {};
 const player = {
     x: canvas.width / 2,
     y: canvas.height / 2,
-    radius: 30,
+    radius: 50,
     image: null,
     angle: 0
 };
@@ -34,13 +34,23 @@ philImage.onload = () => {
     player.image = philImage;
 };
 
+// Load note images
+const blueNoteImage = new Image();
+blueNoteImage.src = 'Art/blueNote.png';
+
+const crashNoteImage = new Image();
+crashNoteImage.src = 'Art/crashNote.png';
+
+const redNoteImage = new Image();
+redNoteImage.src = 'Art/redNote.png';
+
 // Drum types
 const DRUMS = {
-    KICK: { key: ' ', color: '#ff6b6b', size: 40, damage: 30, speed: 1, type: 'shockwave' },
-    SNARE: { key: 'w', color: '#4ecdc4', size: 8, damage: 15, speed: 8, type: 'projectile' },
-    TOM1: { key: 'a', color: '#45b7d1', size: 6, damage: 10, speed: 7, type: 'projectile' },
-    TOM2: { key: 's', color: '#96ceb4', size: 6, damage: 10, speed: 7, type: 'projectile' },
-    HIHAT: { key: 'd', color: '#ffeaa7', size: 4, damage: 5, speed: 10, type: 'projectile' }
+    KICK: { key: ' ', color: '#ff6b6b', size: 20, damage: 30, speed: 6, type: 'projectile', image: blueNoteImage },
+    SNARE: { key: 'w', color: '#4ecdc4', size: 15, damage: 15, speed: 8, type: 'projectile', image: redNoteImage },
+    TOM1: { key: 'a', color: '#45b7d1', size: 12, damage: 10, speed: 7, type: 'projectile', image: redNoteImage },
+    TOM2: { key: 's', color: '#96ceb4', size: 12, damage: 10, speed: 7, type: 'projectile', image: redNoteImage },
+    HIHAT: { key: 'd', color: '#ffeaa7', size: 10, damage: 5, speed: 10, type: 'projectile', image: crashNoteImage }
 };
 
 // Enemy class
@@ -136,62 +146,23 @@ class Projectile {
     }
     
     draw() {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        if (this.drum.image && this.drum.image.complete) {
+            ctx.drawImage(this.drum.image, this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
     }
     
     isOffScreen() {
         return this.x < -50 || this.x > canvas.width + 50 || 
                this.y < -50 || this.y > canvas.height + 50;
-    }
-}
-
-// Shockwave class
-class Shockwave {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 10;
-        this.maxRadius = 150;
-        this.damage = 30;
-        this.expandSpeed = 5;
-        this.opacity = 1;
-    }
-    
-    update() {
-        this.radius += this.expandSpeed;
-        this.opacity = 1 - (this.radius / this.maxRadius);
-    }
-    
-    draw() {
-        ctx.strokeStyle = `rgba(255, 107, 107, ${this.opacity})`;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity * 0.5})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius - 5, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-    
-    isDone() {
-        return this.radius >= this.maxRadius;
-    }
-    
-    hitsEnemy(enemy) {
-        const dx = enemy.x - this.x;
-        const dy = enemy.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        return Math.abs(distance - this.radius) < enemy.radius + 10;
     }
 }
 
@@ -234,11 +205,7 @@ function playDrum(drumKey) {
     const drum = Object.values(DRUMS).find(d => d.key === drumKey);
     if (!drum) return;
     
-    if (drum.type === 'shockwave') {
-        shockwaves.push(new Shockwave(player.x, player.y));
-    } else {
-        projectiles.push(new Projectile(player.x, player.y, mouseX, mouseY, drum));
-    }
+    projectiles.push(new Projectile(player.x, player.y, mouseX, mouseY, drum));
 }
 
 function spawnEnemy() {
@@ -266,22 +233,6 @@ function checkCollisions() {
                 }
                 projectiles.splice(i, 1);
                 break;
-            }
-        }
-    }
-    
-    // Shockwaves vs Enemies
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-        const shockwave = shockwaves[i];
-        
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            const enemy = enemies[j];
-            if (shockwave.hitsEnemy(enemy)) {
-                if (enemy.takeDamage(shockwave.damage)) {
-                    enemies.splice(j, 1);
-                    score += 10;
-                    updateUI();
-                }
             }
         }
     }
@@ -317,7 +268,6 @@ function gameOver() {
     health = 100;
     enemies = [];
     projectiles = [];
-    shockwaves = [];
     particles = [];
     updateUI();
 }
@@ -331,9 +281,6 @@ function update() {
         projectile.update();
         return !projectile.isOffScreen();
     });
-    
-    // Update shockwaves
-    shockwaves = shockwaves.filter(shockwave => !shockwave.isDone());
     
     // Update particles
     particles = particles.filter(particle => {
@@ -350,14 +297,11 @@ function update() {
 
 function draw() {
     // Clear canvas
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';//I fucked this on purpose
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw particles
     particles.forEach(particle => particle.draw());
-    
-    // Draw shockwaves
-    shockwaves.forEach(shockwave => shockwave.draw());
     
     // Draw projectiles
     projectiles.forEach(projectile => projectile.draw());
@@ -366,10 +310,10 @@ function draw() {
     enemies.forEach(enemy => enemy.draw());
     
     // Draw player
-    if (player.image) {
+    if (player.image && player.image.complete) {
         ctx.save();
         ctx.translate(player.x, player.y);
-        ctx.rotate(player.angle + 3.141529);
+        // Keep Phil facing forward (no rotation)
         ctx.drawImage(player.image, -player.radius, -player.radius, player.radius * 2, player.radius * 2);
         ctx.restore();
     } else {
