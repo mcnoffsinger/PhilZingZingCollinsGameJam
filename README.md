@@ -13,7 +13,12 @@ If you die, just click ok and the game should reset on it's own.
 ## How it fits the theme
 The player is rewarded for using different drums instead of the same drum consecutively over and over again.
 
-
+## Credits
+Made by Maxwell Noffsinger
+Using Windsurf
+Image of Phil Collins is from the 'face value' album cover
+All pictures of boohbahs are from the boohbah wiki
+Picture of drums is from Adobe Stock.
 
 
 
