@@ -12,6 +12,23 @@ let mouseX = canvas.width / 2;
 let mouseY = canvas.height / 2;
 let keys = {};
 
+// Cooldown system
+const cooldowns = {
+    kick: 0,
+    snare: 0,
+    tom1: 0,
+    tom2: 0,
+    hihat: 0
+};
+
+const cooldownDuration = {
+    kick: 1000,   // 1 second
+    snare: 200,   // 0.2 seconds
+    tom1: 300,    // 0.3 seconds
+    tom2: 300,    // 0.3 seconds
+    hihat: 150    // 0.15 seconds
+};
+
 // Player object
 const player = {
     x: canvas.width / 2,
@@ -57,6 +74,9 @@ crashNoteImage.src = 'Art/crashNote.png';
 const redNoteImage = new Image();
 redNoteImage.src = 'Art/redNote.png';
 
+const aquarianKickImage = new Image();
+aquarianKickImage.src = 'Art/aquariankick.png';
+
 // Drum types
 const DRUMS = {
     KICK: { key: ' ', color: '#ff6b6b', size: 20, damage: 30, speed: 6, type: 'projectile', image: blueNoteImage },
@@ -69,6 +89,7 @@ const DRUMS = {
 // Enemy class
 class Enemy {
     constructor() {
+        this.id = Math.random().toString(36).substr(2, 9); // Unique ID
         const side = Math.floor(Math.random() * 4);
         switch(side) {
             case 0: // top
@@ -192,6 +213,64 @@ class Projectile {
     }
 }
 
+// Shockwave class
+class Shockwave {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 0   ;
+        this.maxRadius = Math.max(canvas.width, canvas.height);
+        this.damage = 30;
+        this.expandSpeed = 8;
+        this.opacity = 1;
+        this.hasHit = new Set(); // Track enemies already hit by this shockwave
+    }
+    
+    update() {
+        this.radius += this.expandSpeed;
+        this.opacity = Math.max(0, 1 - (this.radius / this.maxRadius));
+    }
+    
+    draw() {
+        if (aquarianKickImage.complete) {
+            ctx.save();
+            ctx.globalAlpha = this.opacity;
+            ctx.drawImage(
+                aquarianKickImage, 
+                this.x - this.radius, 
+                this.y - this.radius, 
+                this.radius * 2, 
+                this.radius * 2
+            );
+            ctx.restore();
+        } else {
+            // Fallback to circle if image not loaded
+            ctx.strokeStyle = `rgba(255, 107, 107, ${this.opacity})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+    
+    isDone() {
+        return this.radius >= this.maxRadius;
+    }
+    
+    hitsEnemy(enemy) {
+        // Check if enemy is within shockwave radius and hasn't been hit yet
+        const dx = enemy.x - this.x;
+        const dy = enemy.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance <= this.radius && !this.hasHit.has(enemy.id)) {
+            this.hasHit.add(enemy.id);
+            return true;
+        }
+        return false;
+    }
+}
+
 // Particle class
 class Particle {
     constructor(x, y, color) {
@@ -230,6 +309,21 @@ function createParticles(x, y, color) {
 function playDrum(drumKey) {
     const drum = Object.values(DRUMS).find(d => d.key === drumKey);
     if (!drum) return;
+    
+    // Check cooldowns
+    let cooldownKey;
+    switch(drumKey) {
+        case ' ': cooldownKey = 'kick'; break;
+        case 'w': cooldownKey = 'snare'; break;
+        case 'a': cooldownKey = 'tom1'; break;
+        case 's': cooldownKey = 'tom2'; break;
+        case 'd': cooldownKey = 'hihat'; break;
+    }
+    
+    if (cooldowns[cooldownKey] > 0) return; // Still on cooldown
+    
+    // Set cooldown
+    cooldowns[cooldownKey] = cooldownDuration[cooldownKey];
     
     projectiles.push(new Projectile(player.x, player.y, mouseX, mouseY, drum));
 }
@@ -295,6 +389,12 @@ function gameOver() {
     enemies = [];
     projectiles = [];
     particles = [];
+    
+    // Reset cooldowns
+    Object.keys(cooldowns).forEach(key => {
+        cooldowns[key] = 0;
+    });
+    
     updateUI();
 }
 
@@ -312,6 +412,13 @@ function update() {
     particles = particles.filter(particle => {
         particle.update();
         return particle.life > 0;
+    });
+    
+    // Update cooldowns
+    Object.keys(cooldowns).forEach(key => {
+        if (cooldowns[key] > 0) {
+            cooldowns[key] -= 16; // Assuming 60 FPS, ~16ms per frame
+        }
     });
     
     // Spawn enemies
@@ -358,6 +465,56 @@ function draw() {
     ctx.lineTo(mouseX, mouseY);
     ctx.stroke();
     ctx.setLineDash([]);
+    
+    // Draw cooldown indicators
+    drawCooldownIndicators();
+}
+
+function drawCooldownIndicators() {
+    const indicatorY = canvas.height - 30;
+    const startX = 50;
+    const spacing = 120;
+    
+    // Kick drum
+    drawCooldownIndicator(startX, indicatorY, 'Space', cooldowns.kick, cooldownDuration.kick, '#ff6b6b');
+    
+    // Snare
+    drawCooldownIndicator(startX + spacing, indicatorY, 'W', cooldowns.snare, cooldownDuration.snare, '#4ecdc4');
+    
+    // Tom1
+    drawCooldownIndicator(startX + spacing * 2, indicatorY, 'A', cooldowns.tom1, cooldownDuration.tom1, '#45b7d1');
+    
+    // Tom2
+    drawCooldownIndicator(startX + spacing * 3, indicatorY, 'S', cooldowns.tom2, cooldownDuration.tom2, '#96ceb4');
+    
+    // Hi-hat
+    drawCooldownIndicator(startX + spacing * 4, indicatorY, 'D', cooldowns.hihat, cooldownDuration.hihat, '#ffeaa7');
+}
+
+function drawCooldownIndicator(x, y, label, current, max, color) {
+    const width = 80;
+    const height = 8;
+    
+    // Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(x - width/2, y - height/2, width, height);
+    
+    // Cooldown bar
+    if (current > 0) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x - width/2, y - height/2, width * (current / max), height);
+    }
+    
+    // Border
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - width/2, y - height/2, width, height);
+    
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y - 12);
 }
 
 function gameLoop() {
