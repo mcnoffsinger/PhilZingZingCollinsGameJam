@@ -7,6 +7,8 @@ Use the mouse to aim at the oncoming BoohBah onslaught.
 Press W, A, S, D, and Spacebar to play different drums and attack.
 Don't let the boohbahs get to Phil Collins.
 You can't spam the drums because of the cooldown.
+As your score increases, more and more boobahs will attack.
+If you die, just click ok and the game should reset on it's own.
 
 ## How it fits the theme
 The player is rewarded for using different drums instead of the same drum consecutively over and over again.
