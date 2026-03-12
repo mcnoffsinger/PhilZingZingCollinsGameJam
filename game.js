@@ -34,7 +34,20 @@ philImage.onload = () => {
     player.image = philImage;
 };
 
-// Load note images
+// Load enemy images
+const jingbahImage = new Image();
+jingbahImage.src = 'Art/Jingbah_fly.png';
+
+const jumbahImage = new Image();
+jumbahImage.src = 'Art/Jumbah_fly.png';
+
+const zingbahImage = new Image();
+zingbahImage.src = 'Art/Zingbah_fly.png';
+
+const zumbahImage = new Image();
+zumbahImage.src = 'Art/Zumbah_fly.png';
+
+const enemyImages = [jingbahImage, jumbahImage, zingbahImage, zumbahImage];
 const blueNoteImage = new Image();
 blueNoteImage.src = 'Art/blueNote.png';
 
@@ -60,27 +73,28 @@ class Enemy {
         switch(side) {
             case 0: // top
                 this.x = Math.random() * canvas.width;
-                this.y = -20;
+                this.y = -50;
                 break;
             case 1: // right
-                this.x = canvas.width + 20;
+                this.x = canvas.width + 50;
                 this.y = Math.random() * canvas.height;
                 break;
             case 2: // bottom
                 this.x = Math.random() * canvas.width;
-                this.y = canvas.height + 20;
+                this.y = canvas.height + 50;
                 break;
             case 3: // left
-                this.x = -20;
+                this.x = -50;
                 this.y = Math.random() * canvas.height;
                 break;
         }
         
-        this.radius = 15 + Math.random() * 10;
-        this.speed = 1 + Math.random();// got rid of * 2 to make enemies slower
+        this.radius = 40;
+        this.speed = 1 + Math.random();
         this.health = 30 + Math.random() * 20;
         this.maxHealth = this.health;
-        this.color = `hsl(${Math.random() * 60}, 70%, 50%)`;
+        this.image = enemyImages[Math.floor(Math.random() * enemyImages.length)];
+        this.angle = 0;
     }
     
     update() {
@@ -90,19 +104,31 @@ class Enemy {
         
         this.x += (dx / distance) * this.speed;
         this.y += (dy / distance) * this.speed;
+        
+        // Rotate enemy to face player
+        this.angle = Math.atan2(dy, dx) + Math.PI / 2;
     }
     
     draw() {
-        // Enemy body
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw enemy image
+        if (this.image && this.image.complete) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+            ctx.drawImage(this.image, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+            ctx.restore();
+        } else {
+            // Fallback to colored circle if image not loaded
+            ctx.fillStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
         
         // Health bar
         const barWidth = this.radius * 2;
         const barHeight = 4;
-        const barY = this.y - this.radius - 10;
+        const barY = this.y - this.radius - 15;
         
         ctx.fillStyle = '#333';
         ctx.fillRect(this.x - barWidth/2, barY, barWidth, barHeight);
@@ -117,7 +143,7 @@ class Enemy {
     
     takeDamage(damage) {
         this.health -= damage;
-        createParticles(this.x, this.y, this.color);
+        createParticles(this.x, this.y, '#ff6b6b');
         return this.health <= 0;
     }
 }
